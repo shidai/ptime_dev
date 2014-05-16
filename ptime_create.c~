@@ -190,130 +190,134 @@ void updateTemplateHeader(tmplStruct *tmpl,pheader *phead)
 
 void removeBaseline(ptime_observation *obs,pheader *phead,int baselineType,float baselineFrac)
 {
-	int nchan,npol,nbin;
-	int i,j,k,k0,k1,it;
-	double bl,bl_best;
-	int setbl=0;
-	int best_k0=0;
+  int nchan,npol,nbin;
+  int i,j,k,k0,k1,it;
+  double bl,bl_best;
+  int setbl=0;
+  int best_k0=0;
 
-	double devi;
+  double devi;
 
-	nchan = phead->nchan;
-	nbin = phead->nbin;
-	npol = phead->npol;
+  nchan = phead->nchan;
+  nbin = phead->nbin;
+  npol = phead->npol;
 
-	for (i=0;i<nchan;i++)
+
+  for (i=0;i<nchan;i++)
+  {
+    for (j=0;j<npol;j++)
     {
-		for (j=0;j<npol;j++)
-		{
-			if (j==0) 
-			{
-				setbl=0;
-	  
-				for (k0=0;k0<nbin;k0++)
-				{
-					for (it = 0; it < baselineFrac*nbin; it++)
-					{
-						bl=0;
-						k1 = k0+it;
-						if (k1 > nbin) k1 = k1-nbin;
-		    
-						if (k1 > k0) 
-						{
-							for (k=k0;k<k1;k++)
-								bl += obs->chan[i].pol[j].val[k];
-						}
-						else if (k1 < k0) 
-						{
-							for (k=k0;k<nbin;k++)
-								bl += obs->chan[i].pol[j].val[k];
-							for (k=0;k<k1;k++)
-								bl += obs->chan[i].pol[j].val[k];
-						}
-					}
-					if (setbl==0) {bl_best = bl; setbl=1;}
-					else 
-					{
-						if (bl_best > bl) {bl_best = bl; best_k0=k0;}
-					}
-				}
-				bl_best = bl_best/(baselineFrac*nbin);
-
-				devi = 0.0;
-				for (it = 0; it < baselineFrac*nbin; it++)
-				{
-					k1 = best_k0 + it;
-					if (k1 > nbin) k1 = k1-nbin;
-		    
-					if (k1 > best_k0) 
-					{
-						for (k = best_k0; k < k1; k++)
-							devi += (obs->chan[i].pol[j].val[k]-bl_best)*(obs->chan[i].pol[j].val[k]-bl_best);
-					}
-					else if (k1 < best_k0) 
-					{
-						for (k = best_k0; k < nbin; k++)
-							devi += (obs->chan[i].pol[j].val[k]-bl_best)*(obs->chan[i].pol[j].val[k]-bl_best);
-						for (k = 0; k < k1; k++)
-							devi += (obs->chan[i].pol[j].val[k]-bl_best)*(obs->chan[i].pol[j].val[k]-bl_best);
-					}
-				}
-				devi = sqrt(devi/(baselineFrac*nbin));
-			} 
-			else 
-			{
-				bl = 0;
-				for (it = 0; it < baselineFrac*nbin; it++)
-				{
-					bl=0;
-					k1 = best_k0+it;
-					if (k1 > nbin) k1 = k1-nbin;
-		
-					if (k1 > best_k0) 
-					{
-						for (k=best_k0;k<k1;k++)
-							bl += obs->chan[i].pol[j].val[k];
-					}
-					else if (k1 < best_k0) 
-					{
-						for (k=k0;k<nbin;k++)
-							bl += obs->chan[i].pol[j].val[k];
-						for (k=0;k<k1;k++)
-							bl += obs->chan[i].pol[j].val[k];
-					}
-				}
-				bl_best = bl;
-				bl_best = bl_best/(baselineFrac*nbin);
-
-				devi = 0.0;
-				for (it = 0; it < baselineFrac*nbin; it++)
-				{
-					k1 = best_k0 + it;
-					if (k1 > nbin) k1 = k1-nbin;
-		    
-					if (k1 > best_k0) 
-					{
-						for (k = best_k0; k < k1; k++)
-							devi += (obs->chan[i].pol[j].val[k]-bl_best)*(obs->chan[i].pol[j].val[k]-bl_best);
-					}
-					else if (k1 < best_k0) 
-					{
-						for (k = best_k0; k < nbin; k++)
-							devi += (obs->chan[i].pol[j].val[k]-bl_best)*(obs->chan[i].pol[j].val[k]-bl_best);
-						for (k = 0; k < k1; k++)
-							devi += (obs->chan[i].pol[j].val[k]-bl_best)*(obs->chan[i].pol[j].val[k]-bl_best);
-					}
-				}
-				devi = sqrt(devi/(baselineFrac*nbin));
-			}
-
-			for (k = 0; k < nbin; k++)
-			{
-				(obs->chan[i].pol[j].val[k]) -= bl_best;
-			}
-			(obs->chan[i].pol[j].devi) = devi;
-		}
+      if (j==0) 
+      {
+	setbl=0;
+	for (k0=0;k0<nbin;k0++)
+	{
+	  for (it = 0; it < baselineFrac*nbin; it++)
+	  {
+	    bl=0;
+	    k1 = k0+it;
+	
+	    if (k1 > nbin) k1 = k1-nbin;
+	
+	    if (k1 > k0) 
+	    {
+	      for (k=k0;k<k1;k++)
+		bl += obs->chan[i].pol[j].val[k];
+	    }
+	    else if (k1 < k0) 
+	    {
+	      for (k=k0;k<nbin;k++)
+		bl += obs->chan[i].pol[j].val[k];
+	      for (k=0;k<k1;k++)
+		bl += obs->chan[i].pol[j].val[k];
+	    }
+	  }
+	  if (setbl==0) {bl_best = bl; setbl=1;}
+	  else
+	  {
+	    if (bl_best > bl) {bl_best = bl; best_k0=k0;}
+	  }
 	}
+	bl_best = bl_best/(baselineFrac*nbin);
+
+	devi = 0.0;
+	for (it = 0; it < baselineFrac*nbin; it++)
+	{
+	  k1 = best_k0 + it;
+	  if (k1 > nbin) k1 = k1-nbin;
+		    
+	  if (k1 > best_k0) 
+	  {
+	    for (k = best_k0; k < k1; k++)
+	      devi += (obs->chan[i].pol[j].val[k]-bl_best)*(obs->chan[i].pol[j].val[k]-bl_best);
+	  }
+	  else if (k1 < best_k0) 
+	  {
+	    for (k = best_k0; k < nbin; k++)
+	      devi += (obs->chan[i].pol[j].val[k]-bl_best)*(obs->chan[i].pol[j].val[k]-bl_best);
+	    for (k = 0; k < k1; k++)
+	      devi += (obs->chan[i].pol[j].val[k]-bl_best)*(obs->chan[i].pol[j].val[k]-bl_best);
+	  }
+	}
+	
+	devi = sqrt(devi/(baselineFrac*nbin));
+      } 
+      else 
+      {
+	bl = 0;
+	for (it = 0; it < baselineFrac*nbin; it++)
+	{
+	  bl=0;
+	  k1 = best_k0+it;
+	  if (k1 > nbin) k1 = k1-nbin;
+	
+	  if (k1 > best_k0) 
+	  {
+	    for (k=best_k0;k<k1;k++)
+	      bl += obs->chan[i].pol[j].val[k];
+	  }
+	
+	  else if (k1 < best_k0) 
+	  {
+	    for (k=k0;k<nbin;k++)
+	      bl += obs->chan[i].pol[j].val[k];
+	    for (k=0;k<k1;k++)
+	      bl += obs->chan[i].pol[j].val[k];
+	  }
+	}
+	bl_best = bl;
+	bl_best = bl_best/(baselineFrac*nbin);
+
+	devi = 0.0;
+
+	for (it = 0; it < baselineFrac*nbin; it++)
+	{
+	  k1 = best_k0 + it;
+	  if (k1 > nbin) k1 = k1-nbin;
+	  if (k1 > best_k0) 
+	  {
+	    for (k = best_k0; k < k1; k++)
+	      devi += (obs->chan[i].pol[j].val[k]-bl_best)*(obs->chan[i].pol[j].val[k]-bl_best);
+	  }
+	  else if (k1 < best_k0) 
+	  {
+	    for (k = best_k0; k < nbin; k++)
+	      devi += (obs->chan[i].pol[j].val[k]-bl_best)*(obs->chan[i].pol[j].val[k]-bl_best);
+	    for (k = 0; k < k1; k++)
+	      devi += (obs->chan[i].pol[j].val[k]-bl_best)*(obs->chan[i].pol[j].val[k]-bl_best);
+	  }
+	}
+	devi = sqrt(devi/(baselineFrac*nbin));
+      }
+
+	
+      for (k = 0; k < nbin; k++)
+      {
+	(obs->chan[i].pol[j].val[k]) -= bl_best;
+      }
+      (obs->chan[i].pol[j].devi) = devi;
+    }
+  }
 }
 
 void plot(ptime_observation *obs,pheader *phead,tmplStruct *tmpl)
@@ -417,9 +421,12 @@ void plot(ptime_observation *obs,pheader *phead,tmplStruct *tmpl)
 	  tmpl->channel[chan].pol[pol].nComp = tmpl->channel[ochan].pol[pol].nComp;
 	  for (i=0;i<tmpl->channel[chan].pol[pol].nComp;i++)
 	    {
-	      tmpl->channel[chan].pol[pol].comp[i].concentration = tmpl->channel[ochan].pol[pol].comp[i].concentration;
-	      tmpl->channel[chan].pol[pol].comp[i].height = tmpl->channel[ochan].pol[pol].comp[i].height;
-	      tmpl->channel[chan].pol[pol].comp[i].centroid = tmpl->channel[ochan].pol[pol].comp[i].centroid;
+	      for (j=0;j<tmpl->channel[chan].pol[pol].comp[i].nVm;j++)
+	      {
+		tmpl->channel[chan].pol[pol].comp[i].vonMises[j].concentration = tmpl->channel[ochan].pol[pol].comp[i].vonMises[j].concentration;
+		tmpl->channel[chan].pol[pol].comp[i].vonMises[j].height = tmpl->channel[ochan].pol[pol].comp[i].vonMises[j].height;
+		tmpl->channel[chan].pol[pol].comp[i].vonMises[j].centroid = tmpl->channel[ochan].pol[pol].comp[i].vonMises[j].centroid;
+	      }
 	    }
 	}
     }
@@ -474,6 +481,7 @@ void plot(ptime_observation *obs,pheader *phead,tmplStruct *tmpl)
       else maxx = mx;
       zoom=1;
     }
+    /*
     else if (key=='A') // Define a component
       {
 	float mx2,my2,mx3,my3,mx4,my4;
@@ -499,6 +507,7 @@ void plot(ptime_observation *obs,pheader *phead,tmplStruct *tmpl)
 	}
 	key='a';
       }
+      */
     else if (key=='s')
       {
 	char fname[128];
