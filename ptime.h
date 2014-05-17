@@ -95,7 +95,7 @@ void readTemplate(char *file,tmplStruct *tmpl)
   char dummy[4096];
   int nchan=-1;
   int nstokes=1;
-  int chan,stokes,comp;
+  int chan,stokes,comp,ivm,icomp;
   char stokesStr[1024];
   double f1,f2;
 
@@ -227,78 +227,69 @@ void readTemplate(char *file,tmplStruct *tmpl)
 		tmpl->channel[chan].pol[stokes].compMemoryAllocated = 1;
 	      }
 	      tmpl->channel[chan].pol[stokes].nCompAllocated = ncomp;
-	      comp=0;
 	    }
 	  else if (strcasecmp(firstword,"NVonMises:")==0)
 	  {
 	      int nAllVm;
 	      sscanf(line,"%s %d",dummy,&nAllVm);
-	      tmpl->channel[chan].pol[stokes].allVm = nVonMises;
+	      tmpl->channel[chan].pol[stokes].allVm = nAllVm;
+	      comp=0;
+	      icomp=0;
+	      ivm=0;
 	  }
 	  else // Look for the number of Von Mises for each component
 	    {
 	      char substr[4096];
 	      strcpy(substr,firstword);
-	      substr[7]='\0';
-	      comp=0;
-	      if (strcasecmp(substr,"VonMise")==0)
-		{
-		  sscanf(line,"%s %d",dummy,
-			 &(tmpl->channel[chan].pol[stokes].comp[comp].nVm));
-		  comp++;
-		}
-	      for (comp=0;comp<tmpl->channel[chan].pol[stokes].nComp;comp++)
+	      substr[4]='\0';
+	      if (strcasecmp(substr,"VonM")==0)
 	      {
+		sscanf(line,"%s %d",dummy,
+		    &(tmpl->channel[chan].pol[stokes].comp[comp].nVm));
+		
 	      	if (tmpl->channel[chan].pol[stokes].comp[comp].vmMemoryAllocated==0)
 		{
-			if (!(tmpl->channel[chan].pol[stokes].comp[comp].vm = (vonMises *)malloc(sizeof(vonMises)*)tmpl->channel[chan].pol[stokes].comp[comp].nVm))
-			{
-		  		printf("Error in allocated memory for components\n");
-		  		exit(1);
-			}
-			tmpl->channel[chan].pol[stokes].comp[comp].vmMemoryAllocated = 1;
+		  if (!(tmpl->channel[chan].pol[stokes].comp[comp].vm = (vonMises *)malloc(sizeof(vonMises)*)tmpl->channel[chan].pol[stokes].comp[comp].nVm))
+		  {
+		    printf("Error in allocated memory for components\n");
+		    exit(1);
+		  }
+		  tmpl->channel[chan].pol[stokes].comp[comp].vmMemoryAllocated = 1;
 	      	}
-	      tmpl->channel[chan].pol[stokes].comp[comp].nVmAllocated = tmpl->channel[chan].pol[stokes].comp[comp].vm;
+		tmpl->channel[chan].pol[stokes].comp[comp].nVmAllocated = tmpl->channel[chan].pol[stokes].comp[comp].vm;
+		comp++;
 	      }
-	    }
-	  else // Look for component
-	    {
-	      char substr[4096];
-	      strcpy(substr,firstword);
-	      substr[4]='\0';
-	      double icomp=0;
-	      double ivm=0;
-	      if (strcasecmp(substr,"COMP")==0)
+	      else if (strcasecmp(substr,"COMP")==0)
 		{
-			if (ivm != tmpl->channel[chan].pol[stokes].comp[icomp].nVm-1)
-			{
-				sscanf(line,"%s %lf %lf %lf %lf %lf %lf",dummy,
-			 	&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height),
-			 	&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height_err),
-			 	&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration),
-			 	&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration_err),
-			 	&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid),
-			 	&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid_err));
-				ivm++;
-			}
-			else 
-			{
-				sscanf(line,"%s %lf %lf %lf %lf %lf %lf",dummy,
-			 	&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height),
-			 	&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height_err),
-			 	&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration),
-			 	&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration_err),
-			 	&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid),
-			 	&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid_err));
-				icomp++;
-				ivm = 0;
-			}
-			 //&(tmpl->channel[chan].pol[stokes].comp[comp].height),
-			 //&(tmpl->channel[chan].pol[stokes].comp[comp].height_err),
-			 //&(tmpl->channel[chan].pol[stokes].comp[comp].concentration),
-			 //&(tmpl->channel[chan].pol[stokes].comp[comp].concentration_err),
-			 //&(tmpl->channel[chan].pol[stokes].comp[comp].centroid),
-			 //&(tmpl->channel[chan].pol[stokes].comp[comp].centroid_err));
+		  if (ivm != tmpl->channel[chan].pol[stokes].comp[icomp].nVm-1)
+		  {
+		    sscanf(line,"%s %lf %lf %lf %lf %lf %lf",dummy,
+			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height),
+			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height_err),
+			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration),
+			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration_err),
+			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid),
+			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid_err));
+		    ivm++;
+		  }
+		  else 
+		  {
+		    sscanf(line,"%s %lf %lf %lf %lf %lf %lf",dummy,
+			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height),
+			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height_err),
+			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration),
+			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration_err),
+			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid),
+			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid_err));
+		    icomp++;
+		    ivm = 0;
+		  }
+		  //&(tmpl->channel[chan].pol[stokes].comp[comp].height),
+		  //&(tmpl->channel[chan].pol[stokes].comp[comp].height_err),
+		  //&(tmpl->channel[chan].pol[stokes].comp[comp].concentration),
+		  //&(tmpl->channel[chan].pol[stokes].comp[comp].concentration_err),
+		  //&(tmpl->channel[chan].pol[stokes].comp[comp].centroid),
+		  //&(tmpl->channel[chan].pol[stokes].comp[comp].centroid_err));
 		}
 	    }
 	}
