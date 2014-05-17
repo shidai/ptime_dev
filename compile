@@ -1,7 +1,7 @@
-g++  -o ptime_plot ptime_plot.c  -I. -I../pgplot -L../pgplot/ -lpgplot -lcpgplot -L/usr/X11/lib -lX11 -L/usr/local/gfortran/lib/gcc/x86_64-apple-darwin10.3.0/4.5.1/../../.. -lgfortran 
+#g++  -o ptime_plot ptime_plot.c  -I. -I../pgplot -L../pgplot/ -lpgplot -lcpgplot -L/usr/X11/lib -lX11 -L/usr/local/gfortran/lib/gcc/x86_64-apple-darwin10.3.0/4.5.1/../../.. -lgfortran 
 
 g++ -o ptime_create ptime_create.c readPfits.c -I. -I../pgplot -L../pgplot/ -lpgplot -lcpgplot -L/usr/X11/lib -lX11 -L/usr/local/gfortran/lib/gcc/x86_64-apple-darwin10.3.0/4.5.1/../../.. -lgfortran -L../cfitsio/lib -I../cfitsio/include/ -lcfitsio -L/psr/dist/x86_64_lenny/lib/ -I/psr/dist/x86_64_lenny/include/ -lgsl -lgslcblas 
 
-g++ -o ptime_modify ptime_modify.c readPfits.c -I. -I../pgplot -L../pgplot/ -lpgplot -lcpgplot -L/usr/X11/lib -lX11 -L/usr/local/gfortran/lib/gcc/x86_64-apple-darwin10.3.0/4.5.1/../../.. -lgfortran -L../cfitsio/lib -I../cfitsio/include/ -lcfitsio 
+#g++ -o ptime_modify ptime_modify.c readPfits.c -I. -I../pgplot -L../pgplot/ -lpgplot -lcpgplot -L/usr/X11/lib -lX11 -L/usr/local/gfortran/lib/gcc/x86_64-apple-darwin10.3.0/4.5.1/../../.. -lgfortran -L../cfitsio/lib -I../cfitsio/include/ -lcfitsio 
 
 #g++  -o ptime ptime.c readPfits.c T2toolkit.C  TKfit.C  TKmatrix.C  TKsvd.C ptimeLib.c libtempo2pred.a  -I. -I../pgplot -L../pgplot/ -lpgplot -lcpgplot -L/usr/X11/lib -lX11 -L/usr/local/gfortran/lib/gcc/x86_64-apple-darwin10.3.0/4.5.1/../../.. -lgfortran -L../cfitsio/lib -I../cfitsio/include/ -lcfitsio

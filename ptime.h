@@ -6,19 +6,19 @@
 #include <math.h>
 #include <string.h>
 
-typedef struct vonMises {
+typedef struct vMises {
   double concentration; // Concentration of each component
   double height;        // Height of each component
   double centroid;      // Centroid of each component
   double concentration_err; // error of Concentration 
   double height_err;        // error of Height
   double centroid_err;      // error of Centroid
-} vonMises;
+} vMises;
 
 typedef struct component {
   int Comp;            // 1 = I, 2 = Q, 3 = U, 4 = V
   int nVm;             // Number of components for each channel for each Stokes
-  vonMises *vm;
+  vMises *vonMises;
   int vmMemoryAllocated;
   int nVmAllocated;
 } component;
@@ -249,14 +249,14 @@ void readTemplate(char *file,tmplStruct *tmpl)
 		
 	      	if (tmpl->channel[chan].pol[stokes].comp[comp].vmMemoryAllocated==0)
 		{
-		  if (!(tmpl->channel[chan].pol[stokes].comp[comp].vm = (vonMises *)malloc(sizeof(vonMises)*)tmpl->channel[chan].pol[stokes].comp[comp].nVm))
+		  if (!(tmpl->channel[chan].pol[stokes].comp[comp].vonMises = (vMises *)malloc(sizeof(vMises)*tmpl->channel[chan].pol[stokes].comp[comp].nVm)))
 		  {
 		    printf("Error in allocated memory for components\n");
 		    exit(1);
 		  }
 		  tmpl->channel[chan].pol[stokes].comp[comp].vmMemoryAllocated = 1;
 	      	}
-		tmpl->channel[chan].pol[stokes].comp[comp].nVmAllocated = tmpl->channel[chan].pol[stokes].comp[comp].vm;
+		tmpl->channel[chan].pol[stokes].comp[comp].nVmAllocated = tmpl->channel[chan].pol[stokes].comp[comp].nVm;
 		comp++;
 	      }
 	      else if (strcasecmp(substr,"COMP")==0)
@@ -307,7 +307,7 @@ double evaluateTemplateComponent(tmplStruct *tmpl,double phi,int chan,int stokes
   int k;
   for (k=0;k<tmpl->channel[chan].pol[stokes].comp[comp].nVm;k++)
   	result += fabs(tmpl->channel[chan].pol[stokes].comp[comp].vonMises[k].height) *
-    	exp(tmpl->channel[chan].pol[stokes].comp[comp].vonMises[k].oncentration*
+    	exp(tmpl->channel[chan].pol[stokes].comp[comp].vonMises[k].concentration*
 	(cos((phi - tmpl->channel[chan].pol[stokes].comp[comp].vonMises[k].centroid - phiRot)*2*M_PI)-1));
   return result;
 }
@@ -350,7 +350,7 @@ void saveTemplate(char *fname,tmplStruct *tmpl)
 {
   FILE *fout;
   char version[128] = "1.0";
-  int i,j,k;
+  int i,j,k,h;
   double centre;
 
   if (!(fout = fopen(fname,"w")))
