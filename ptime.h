@@ -114,7 +114,10 @@ void readTemplate(char *file,tmplStruct *tmpl)
 	else {
 	  sscanf(line,"%s",firstword);
 	  if (strcasecmp(firstword,"TEMPLATE_VERSION:")==0)
+		{
 	    sscanf(line,"%s %f",dummy,&(tmpl->templateVersion));
+			//printf("%f\n", dummy);
+		}
 	  else if (strcasecmp(firstword,"SOURCE:")==0)
 	    sscanf(line,"%s %s",dummy,(tmpl->source));
 	  else if (strcasecmp(firstword,"PROFILE_FILE:")==0)
@@ -169,132 +172,156 @@ void readTemplate(char *file,tmplStruct *tmpl)
   }
   while (!feof(fin))
     {
-      if (fgets(line,4096,fin)!=NULL){
-	if (line[0] == '#') // Comment line
-	  {
-	    // Do nothing
-	  }
-	else {
-	  sscanf(line,"%s",firstword);
-	  if (strcasecmp(firstword,"STOKES:")==0){
-	    sscanf(line,"%s %s",dummy,stokesStr);
-	    if (strcmp(stokesStr,"I")==0)
-	      stokes=0;
-	    else if (strcmp(stokesStr,"Q")==0)
-	      stokes = 1;
-	    else if (strcmp(stokesStr,"U")==0)
-	      stokes = 2;
-	    else if (strcmp(stokesStr,"V")==0)
-	      stokes = 3;
-	  } 
-	  else if (strcasecmp(firstword,"FREQUENCY_RANGE:")==0)
-	    {
-	      if (stokes==0)
-		chan++;
-	      sscanf(line,"%s %lf %lf",dummy,&f1,&f2);
-	      if (f1 < f2){
-		tmpl->channel[chan].freqLow = f1;
-		tmpl->channel[chan].freqHigh = f2;
-	      } else {
-		tmpl->channel[chan].freqLow = f2;
-		tmpl->channel[chan].freqHigh = f1;
-	      }
-	      tmpl->channel[chan].nstokes = nstokes;
-	      // Allocate memory
-	      if (tmpl->channel[chan].polMemoryAllocated==0){
-		if (!(tmpl->channel[chan].pol = (polStruct *)malloc(sizeof(polStruct)*nstokes))){
-		  printf("Error in allocated memory for Stokes\n");
-		  exit(1);
-		}
-		tmpl->channel[chan].polMemoryAllocated = 1;
-		for (i=0;i<nstokes;i++)
-		  tmpl->channel[chan].pol[i].compMemoryAllocated = 0;
-	      }
-	      //	    }
-	      tmpl->channel[chan].nPolAllocated = nstokes;
-	    }
-	  else if (strcasecmp(firstword,"NCOMP:")==0)
-	    {
-	      int ncomp;
-	      sscanf(line,"%s %d",dummy,&ncomp);
-	      tmpl->channel[chan].pol[stokes].nComp = ncomp;
-	      tmpl->channel[chan].pol[stokes].stokes = stokes;
-	      if (tmpl->channel[chan].pol[stokes].compMemoryAllocated==0){
-		if (!(tmpl->channel[chan].pol[stokes].comp = (component *)malloc(sizeof(component)*ncomp))){
-		  printf("Error in allocated memory for components\n");
-		  exit(1);
-		}
-		tmpl->channel[chan].pol[stokes].compMemoryAllocated = 1;
-	      }
-	      tmpl->channel[chan].pol[stokes].nCompAllocated = ncomp;
-	    }
-	  else if (strcasecmp(firstword,"NVonMises:")==0)
-	  {
-	      int nAllVm;
-	      sscanf(line,"%s %d",dummy,&nAllVm);
-	      tmpl->channel[chan].pol[stokes].allVm = nAllVm;
-	      comp=0;
-	      icomp=0;
-	      ivm=0;
-	  }
-	  else // Look for the number of Von Mises for each component
-	    {
-	      char substr[4096];
-	      strcpy(substr,firstword);
-	      substr[4]='\0';
-	      if (strcasecmp(substr,"VonM")==0)
-	      {
-		sscanf(line,"%s %d",dummy,
-		    &(tmpl->channel[chan].pol[stokes].comp[comp].nVm));
+      if (fgets(line,4096,fin)!=NULL)
+			{
+				if (line[0] == '#') // Comment line
+				{
+					// Do nothing
+				}
+				else 
+				{
+					sscanf(line,"%s",firstword);
+					if (strcasecmp(firstword,"STOKES:")==0)
+					{
+						sscanf(line,"%s %s",dummy,stokesStr);
+						if (strcmp(stokesStr,"I")==0)
+							stokes=0;
+						else if (strcmp(stokesStr,"Q")==0)
+							stokes = 1;
+						else if (strcmp(stokesStr,"U")==0)
+							stokes = 2;
+						else if (strcmp(stokesStr,"V")==0)
+							stokes = 3;
+					} 
+					else if (strcasecmp(firstword,"FREQUENCY_RANGE:")==0)
+					{
+						if (stokes==0)
+							chan++;
+						sscanf(line,"%s %lf %lf",dummy,&f1,&f2);
+						if (f1 < f2)
+						{
+							tmpl->channel[chan].freqLow = f1;
+							tmpl->channel[chan].freqHigh = f2;
+							//printf("%lf %lf\n",tmpl->channel[chan].freqLow,tmpl->channel[chan].freqHigh);
+						} 
+						else 
+						{
+							tmpl->channel[chan].freqLow = f2;
+							tmpl->channel[chan].freqHigh = f1;
+						}
+						tmpl->channel[chan].nstokes = nstokes;
+						// Allocate memory
+						if (tmpl->channel[chan].polMemoryAllocated==0)
+						{
+							if (!(tmpl->channel[chan].pol = (polStruct *)malloc(sizeof(polStruct)*nstokes)))
+							{
+								printf("Error in allocated memory for Stokes\n");
+								exit(1);
+							}
 		
-	      	if (tmpl->channel[chan].pol[stokes].comp[comp].vmMemoryAllocated==0)
-		{
-		  if (!(tmpl->channel[chan].pol[stokes].comp[comp].vonMises = (vMises *)malloc(sizeof(vMises)*tmpl->channel[chan].pol[stokes].comp[comp].nVm)))
-		  {
-		    printf("Error in allocated memory for components\n");
-		    exit(1);
-		  }
-		  tmpl->channel[chan].pol[stokes].comp[comp].vmMemoryAllocated = 1;
-	      	}
-		tmpl->channel[chan].pol[stokes].comp[comp].nVmAllocated = tmpl->channel[chan].pol[stokes].comp[comp].nVm;
-		comp++;
-	      }
-	      else if (strcasecmp(substr,"COMP")==0)
-		{
-		  if (ivm != tmpl->channel[chan].pol[stokes].comp[icomp].nVm-1)
-		  {
-		    sscanf(line,"%s %lf %lf %lf %lf %lf %lf",dummy,
-			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height),
-			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height_err),
-			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration),
-			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration_err),
-			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid),
-			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid_err));
-		    ivm++;
-		  }
-		  else 
-		  {
-		    sscanf(line,"%s %lf %lf %lf %lf %lf %lf",dummy,
-			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height),
-			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height_err),
-			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration),
-			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration_err),
-			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid),
-			&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid_err));
-		    icomp++;
-		    ivm = 0;
-		  }
-		  //&(tmpl->channel[chan].pol[stokes].comp[comp].height),
-		  //&(tmpl->channel[chan].pol[stokes].comp[comp].height_err),
-		  //&(tmpl->channel[chan].pol[stokes].comp[comp].concentration),
-		  //&(tmpl->channel[chan].pol[stokes].comp[comp].concentration_err),
-		  //&(tmpl->channel[chan].pol[stokes].comp[comp].centroid),
-		  //&(tmpl->channel[chan].pol[stokes].comp[comp].centroid_err));
+							tmpl->channel[chan].polMemoryAllocated = 1;
+							for (i=0;i<nstokes;i++)
+								tmpl->channel[chan].pol[i].compMemoryAllocated = 0;
+						}
+	      //	    }
+						tmpl->channel[chan].nPolAllocated = nstokes;
+				}
+				else if (strcasecmp(firstword,"NCOMP:")==0)
+				{
+					int ncomp;
+					sscanf(line,"%s %d",dummy,&ncomp);
+					tmpl->channel[chan].pol[stokes].nComp = ncomp;
+					tmpl->channel[chan].pol[stokes].stokes = stokes;
+					if (tmpl->channel[chan].pol[stokes].compMemoryAllocated==0)
+					{
+						if (!(tmpl->channel[chan].pol[stokes].comp = (component *)malloc(sizeof(component)*ncomp)))
+						{
+							printf("Error in allocated memory for components\n");
+							exit(1);
+						}
+		
+						tmpl->channel[chan].pol[stokes].compMemoryAllocated = 1;
+					}
+					tmpl->channel[chan].pol[stokes].nCompAllocated = ncomp;
+					//printf ("%d\n",ncomp);
+				}
+				else if (strcasecmp(firstword,"NVonMises:")==0)
+				{
+					int nAllVm;
+					sscanf(line,"%s %d",dummy,&nAllVm);
+					tmpl->channel[chan].pol[stokes].allVm = nAllVm;
+					//printf ("%d\n",nAllVm);
+	      
+					comp=0;
+					icomp=0;
+					ivm=0;
+				}
+				else // Look for the number of Von Mises for each component
+				{
+					char substr[4096];
+					strcpy(substr,firstword);
+					substr[4]='\0';
+	      
+					if (strcasecmp(substr,"VonM")==0)
+					{
+						//printf ("%d\n",comp);
+						tmpl->channel[chan].pol[stokes].comp[comp].vmMemoryAllocated=0;
+						sscanf(line,"%s %d",dummy, &(tmpl->channel[chan].pol[stokes].comp[comp].nVm));
+						printf ("COMP%d has %d Von Mises functions\n",comp+1, tmpl->channel[chan].pol[stokes].comp[comp].nVm);
+						if (tmpl->channel[chan].pol[stokes].comp[comp].vmMemoryAllocated==0)
+						{
+							if (!(tmpl->channel[chan].pol[stokes].comp[comp].vonMises = (vMises *)malloc(sizeof(vMises)*tmpl->channel[chan].pol[stokes].comp[comp].nVm)))
+							{
+								printf("Error in allocated memory for components\n");
+								exit(1);
+							}
+							tmpl->channel[chan].pol[stokes].comp[comp].vmMemoryAllocated = 1;
+							//printf ("%d\n",tmpl->channel[chan].pol[stokes].comp[comp].vmMemoryAllocated);
+						}
+						tmpl->channel[chan].pol[stokes].comp[comp].nVmAllocated = tmpl->channel[chan].pol[stokes].comp[comp].nVm;
+						comp++;
+					}
+					else if (strcasecmp(substr,"COMP")==0)
+					{
+						//printf ("%d\n",tmpl->channel[chan].pol[stokes].comp[icomp].nVm);
+						if (ivm != tmpl->channel[chan].pol[stokes].comp[icomp].nVm-1)
+						{
+							sscanf(line,"%s %lf %lf %lf %lf %lf %lf",dummy,
+									&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height),
+									&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height_err),
+									&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration),
+									&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration_err),
+									&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid),
+									&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid_err));
+							//printf("%lf %lf %lf\n",tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height,tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration,tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid);
+							//printf ("%d %d\n",ivm, icomp);
+							ivm++;
+						}
+						else 
+						{
+							sscanf(line,"%s %lf %lf %lf %lf %lf %lf",dummy,
+									&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height),
+									&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].height_err),
+									&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration),
+									&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].concentration_err),
+									&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid),
+									&(tmpl->channel[chan].pol[stokes].comp[icomp].vonMises[ivm].centroid_err));
+							//printf ("%d %d\n",ivm,icomp);
+							icomp++;
+							ivm = 0;
+						}
+		  
+						//&(tmpl->channel[chan].pol[stokes].comp[comp].height),
+						//&(tmpl->channel[chan].pol[stokes].comp[comp].height_err),
+						//&(tmpl->channel[chan].pol[stokes].comp[comp].concentration),
+						//&(tmpl->channel[chan].pol[stokes].comp[comp].concentration_err),
+						//&(tmpl->channel[chan].pol[stokes].comp[comp].centroid),
+						//&(tmpl->channel[chan].pol[stokes].comp[comp].centroid_err));
+					}
+				}
+			}
 		}
-	    }
-	}
-      }
-    }
+  }
   fclose(fin);
 }
 
@@ -323,9 +350,9 @@ double evaluateTemplateChannel(tmplStruct *tmpl,double phi,int chan,int stokes,d
 }
 
 // Allocate specific amount of memory
-void allocateMemoryTemplateDefault(tmplStruct *tmpl,int nchan,int npol,int ncomp)
+void allocateMemoryTemplateDefault(tmplStruct *tmpl,int nchan,int npol,int ncomp,int nvm)
 {
-  int i,j;
+  int i,j,k;
   tmpl->channel = (channelStruct *)malloc(sizeof(channelStruct)*nchan);
   tmpl->channelMemoryAllocated = 1;
   tmpl->nChannelAllocated = nchan;
@@ -336,12 +363,19 @@ void allocateMemoryTemplateDefault(tmplStruct *tmpl,int nchan,int npol,int ncomp
       tmpl->channel[i].polMemoryAllocated = 1;
       tmpl->channel[i].nPolAllocated = npol;
 
-      for (j=0;j<npol;j++)
-	{
-	  tmpl->channel[i].pol[j].comp = (component *)malloc(sizeof(component)*ncomp);
-	  tmpl->channel[i].pol[j].compMemoryAllocated = 1;
-	  tmpl->channel[i].pol[j].nCompAllocated = ncomp;
-	}
+			for (j=0;j<npol;j++)
+			{
+				tmpl->channel[i].pol[j].comp = (component *)malloc(sizeof(component)*ncomp);
+				tmpl->channel[i].pol[j].compMemoryAllocated = 1;
+				tmpl->channel[i].pol[j].nCompAllocated = ncomp;
+
+				for (k=0;k<ncomp;k++)
+				{
+					tmpl->channel[i].pol[j].comp[k].vonMises = (vMises *)malloc(sizeof(vMises)*nvm);
+					tmpl->channel[i].pol[j].comp[k].vmMemoryAllocated = 1;
+					tmpl->channel[i].pol[j].comp[k].nVmAllocated = nvm;
+				}
+			}
     }
 }
 
@@ -366,11 +400,6 @@ void saveTemplate(char *fname,tmplStruct *tmpl)
   fprintf(fout,"UNITS: %s\n",tmpl->units);
   fprintf(fout,"NCHAN: %d\n",tmpl->nchan);
 
-  for (k=0;k<tmpl->channel[0].pol[0].nComp;k++)
-  {
-  	fprintf(fout,"VonMise CHAN%d: %d\n", k+1, tmpl->channel[0].pol[0].comp[k].nVm);
-  }
-
   for (i=0;i<tmpl->nchan;i++)
     {
       fprintf(fout,"#\n");
@@ -387,6 +416,13 @@ void saveTemplate(char *fname,tmplStruct *tmpl)
 	    fprintf(fout,"STOKES: V\n");
 	  fprintf(fout,"FREQUENCY_RANGE: %f %f\n",tmpl->channel[i].freqLow,tmpl->channel[i].freqHigh);
 	  fprintf(fout,"NCOMP: %d\n",tmpl->channel[i].pol[j].nComp);
+		fprintf(fout,"NVonMises: %d\n", tmpl->channel[i].pol[j].allVm);
+  
+		for (k=0;k<tmpl->channel[i].pol[j].nComp;k++)
+		{
+			fprintf(fout,"VonM: %d\n", tmpl->channel[i].pol[j].comp[k].nVm);
+		}
+
 	  for (k=0;k<tmpl->channel[i].pol[j].nComp;k++)
 	  {
 	  	for (h=0;h<tmpl->channel[i].pol[j].comp[k].nVm;h++)

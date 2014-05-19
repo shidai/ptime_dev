@@ -35,6 +35,8 @@
 #include <gsl/gsl_multifit_nlin.h>
 
 #define MAX_COMPONENTS 64 // Maximum number of components per polarisation per frequency channel
+#define MAX_VONMISES 16 // Maximum number of Von Mises functions per component
+
 int global_nComp;
 
 typedef struct ptime_pol {
@@ -62,6 +64,16 @@ struct data {
   double *sigma;
 };
 
+struct datag {
+  size_t n;
+  int nComp; // number of components
+  int *nVm; // number of Von Mises function for each component
+  double *x;
+  double *y;
+  double *sigma;
+	double *par;
+};
+
 double nonlinearFunc( double x, const double *par);
 void allocateObsMemory(ptime_observation *obs,pheader *phead);
 void deallocateMemory(ptime_observation *obs);
@@ -77,7 +89,7 @@ int Mises_df (const gsl_vector *x, void *data, gsl_matrix *J);
 int Mises_fdf (const gsl_vector *x, void *data, gsl_vector *f, gsl_matrix *J);
 void doFit_err(float *fx,float *fy, double devi, int nbin,tmplStruct *tmpl,int chan,int pol);
 void print_state (size_t iter, gsl_multifit_fdfsolver * s);
-
+void doFit_gerr(float *fx,float *fy, double devi, int nbin,tmplStruct *tmpl,int chan,int pol);
 void updateTemplateHeader(tmplStruct *tmpl,pheader *phead);
 
 int main(int argc,char *argv[])
@@ -106,7 +118,7 @@ int main(int argc,char *argv[])
     }
   fp = openFitsFile(fname);
   loadPrimaryHeader(fp,header);
-  allocateMemoryTemplateDefault(&tmpl,header->nchan,header->npol,MAX_COMPONENTS);
+  allocateMemoryTemplateDefault(&tmpl,header->nchan,header->npol,MAX_COMPONENTS,MAX_VONMISES);
   startNewTemplate(&tmpl,header);
   if (setUnits==1) strcpy(tmpl.units,units);
   strcpy(tmpl.profileFile,fname);
@@ -437,7 +449,7 @@ void plot(ptime_observation *obs,pheader *phead,tmplStruct *tmpl)
       scanf("%s",fname);
       printf("Trying to load\n");
       readTemplate(fname,tmpl);
-	  updateTemplateHeader(tmpl,phead);
+			updateTemplateHeader(tmpl,phead);
       printf("Completed load\n");
     }
     else if (key=='p'){
@@ -473,6 +485,8 @@ void plot(ptime_observation *obs,pheader *phead,tmplStruct *tmpl)
       {doFit(fx,fy,nbin,tmpl,chan,pol);saved=0;}
     else if (key=='F')
       {doFit_err(fx,fy,obs->chan[chan].pol[pol].devi,nbin,tmpl,chan,pol);saved=0;}
+    else if (key=='g')
+      {doFit_gerr(fx,fy,obs->chan[chan].pol[pol].devi,nbin,tmpl,chan,pol);saved=0;}
     else if (key=='z') {
       float mx2,my2;
       cpgband(4,0,mx,my,&mx2,&my2,&key);
@@ -2258,16 +2272,273 @@ void doFit_err(float *fx,float *fy, double devi, int nbin,tmplStruct *tmpl,int c
     {
       if (ivm != tmpl->channel[chan].pol[pol].comp[icomp].nVm-1)
       {
-				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].height = pval[3*i];
-				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].concentration = pval[3*i+1];
-				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].centroid = pval[3*i+2];
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].height = FIT(3*i);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].concentration = FIT(3*i+1);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].centroid = FIT(3*i+2);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].height_err = c*ERR(3*i);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].concentration_err = c*ERR(3*i+1);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].centroid_err = c*ERR(3*i+2);
 				ivm++;
       }
       else
       {
-				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].height = pval[3*i];
-				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].concentration = pval[3*i+1];
-				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].centroid = pval[3*i+2];
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].height = FIT(3*i);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].concentration = FIT(3*i+1);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].centroid = FIT(3*i+2);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].height_err = c*ERR(3*i);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].concentration_err = c*ERR(3*i+1);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].centroid_err = c*ERR(3*i+2);
+				icomp++;
+				ivm=0;
+      }
+    }
+
+	gsl_multifit_fdfsolver_free (s);
+	gsl_matrix_free (covar);
+	gsl_rng_free (r);
+}
+
+int Mises_gf (const gsl_vector *x, void *datag, gsl_vector *f)
+{
+  size_t n = ((struct datag *)datag)->n;  // n is the nbin
+  int nComp = ((struct datag *)datag)->nComp;
+  int *nVm = ((struct datag *)datag)->nVm;
+  double *t = ((struct datag *)datag)->x;
+  double *y = ((struct datag *)datag)->y;
+  double *sigma = ((struct datag *)datag)->sigma;
+  double *par = ((struct datag *)datag)->par;
+
+  double result;
+  int i, k, j, index;
+  for (i = 0; i < n; i++)
+  {
+    result = 0.0;
+	  index = 0;
+    for (k = 0; k < nComp; k++)
+    {
+      for (j = 0; j < nVm[k]; j++)
+      {
+				result += fabs(gsl_vector_get(x,2*k))*fabs(par[index+3*j])*exp(par[index+3*j+1]*(cos((t[i]-par[index+3*j+2]-gsl_vector_get(x,2*k+1))*2*M_PI)-1));
+      }
+			index += nVm[k]*3;
+      //result += fabs(par[3*k+0])*exp(par[3*k+1]*(cos((x-(par[3*k+2]))*2*M_PI)-1));
+      //result += par[3*k+0]*exp(par[3*k+1]*(cos((x-(par[3*k+2]))*2*M_PI)-1));
+    }
+    gsl_vector_set (f, i, (result - y[i])/sigma[i]);
+  }
+
+  return GSL_SUCCESS;
+}
+
+int Mises_gdf (const gsl_vector *x, void *datag, gsl_matrix *J)
+{
+  size_t n = ((struct datag *)datag)->n;  // n is the nbin
+	int nComp = ((struct datag *)datag)->nComp;
+  int *nVm = ((struct datag *)datag)->nVm;
+	double *t = ((struct datag *)datag)->x;
+	double *y = ((struct datag *)datag)->y;
+	double *sigma = ((struct datag *)datag)->sigma;
+  double *par = ((struct datag *)datag)->par;
+
+	int i, k, j, index;
+	for (i = 0; i < n; i++)
+	{
+		index = 0;
+		double s = sigma[i];
+    for (k = 0; k < nComp; k++)
+    {
+			double e1 = 0.0;
+			double e2 = 0.0;
+      for (j = 0; j < nVm[k]; j++)
+      {
+			//double e1 = exp(gsl_vector_get(x,3*k+1)*(cos((t[i]-(gsl_vector_get(x,3*k+2)))*2*M_PI)-1));
+				if (gsl_vector_get(x,index+3*j) >= 0)
+				{
+					//e1 = exp(gsl_vector_get(x,index+3*j+1)*(cos((t[i]-(gsl_vector_get(x,index+3*j+2)))*2*M_PI)-1));
+					e1 += fabs(par[index+3*j])*exp(par[index+3*j+1]*(cos((t[i]-par[index+3*j+2]-gsl_vector_get(x,2*k+1))*2*M_PI)-1));
+				}
+				else
+				{
+					//e1 = -exp(gsl_vector_get(x,index+3*j+1)*(cos((t[i]-(gsl_vector_get(x,index+3*j+2)))*2*M_PI)-1));
+					e1 += -fabs(par[index+3*j])*exp(par[index+3*j+1]*(cos((t[i]-par[index+3*j+2]-gsl_vector_get(x,2*k+1))*2*M_PI)-1));
+				}
+				//double e2 = (gsl_vector_get(x,index+3*j))*(cos((t[i]-(gsl_vector_get(x,index+3*j+2)))*2*M_PI)-1)*exp(gsl_vector_get(x,index+3*j+1)*(cos((t[i]-(gsl_vector_get(x,index+3*j+2)))*2*M_PI)-1));
+				e2 += fabs(gsl_vector_get(x,2*k))*fabs(par[index+3*j])*exp(par[index+3*j+1]*(cos((t[i]-par[index+3*j+2]-gsl_vector_get(x,2*k+1))*2*M_PI)-1))*(2*M_PI*par[index+3*j+1]*sin((t[i]-par[index+3*j+2]-gsl_vector_get(x,2*k+1))*2*M_PI));
+			}
+			gsl_matrix_set(J,i,2*k, e1/s);
+			gsl_matrix_set(J,i,2*k+1, e2/s);
+			index += nVm[k]*3;
+		}
+	}
+	return GSL_SUCCESS;
+}
+
+int Mises_gfdf (const gsl_vector *x, void *data, gsl_vector *f, gsl_matrix *J)
+{
+	Mises_f (x, data, f);
+	Mises_df (x, data, J);
+	return GSL_SUCCESS;
+}
+
+// Do the non-linear fit of the components, and also output the error of parameters
+void doFit_gerr(float *fx,float *fy, double devi, int nbin,tmplStruct *tmpl,int chan,int pol)
+{
+  double pval[tmpl->channel[chan].pol[pol].nComp*2];
+  double par[tmpl->channel[chan].pol[pol].allVm*3];
+  double par_err[tmpl->channel[chan].pol[pol].allVm*3];
+  double datX[nbin],datY[nbin];
+  double sigma[nbin];
+  unsigned int i;
+  int nFit;
+
+  nFit = tmpl->channel[chan].pol[pol].nComp*2;
+
+  // Fit for all parameters of all components
+  int ivm=0;
+  int icomp=0;
+  for (i=0;i<tmpl->channel[chan].pol[pol].allVm;i++)
+    {
+      if (ivm != tmpl->channel[chan].pol[pol].comp[icomp].nVm-1)
+      {
+				par[3*i] = tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].height;
+				par[3*i+1] = tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].concentration;
+				par[3*i+2] = tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].centroid;
+				par_err[3*i] = tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].height_err;
+				par_err[3*i+1] = tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].concentration_err;
+				par_err[3*i+2] = tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].centroid_err;
+				ivm++;
+      }
+      else
+      {
+				par[3*i] = tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].height;
+				par[3*i+1] = tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].concentration;
+				par[3*i+2] = tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].centroid;
+				par_err[3*i] = tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].height_err;
+				par_err[3*i+1] = tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].concentration_err;
+				par_err[3*i+2] = tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].centroid_err;
+				icomp++;
+				ivm=0;
+      }
+	  }
+
+  for (i=0;i<tmpl->channel[chan].pol[pol].nComp;i++)
+    {
+			pval[2*i] = 1.0;
+			pval[2*i+1] = 0.0;
+		}
+
+	// Fill up the fitting array
+	for (i=0;i<nbin;i++)
+    {
+		datX[i] = (double)fx[i];
+		datY[i] = (double)fy[i];
+		sigma[i] = devi;
+		//printf ("%lf\n",sigma[i]);
+    }
+
+	int nComp = tmpl->channel[chan].pol[pol].nComp;
+	//global_nComp = tmpl->channel[chan].pol[pol].nComp;
+	
+	int nVm[nComp];
+	for (i = 0; i < nComp; i++)
+	{
+		nVm[i] = tmpl->channel[chan].pol[pol].comp[i].nVm;
+	}
+
+	struct datag dat = {nbin, nComp, nVm, datX, datY, sigma, par}; 
+
+	// Initialize the solver
+	const gsl_multifit_fdfsolver_type *T;
+	gsl_multifit_fdfsolver *s;
+	int status;
+	unsigned int iter = 0;
+	const size_t n = nbin;
+	const size_t p = nFit;
+
+	gsl_matrix *covar = gsl_matrix_alloc (p, p);
+	gsl_multifit_function_fdf f;
+
+	//double x_init[nFit] = { 1.0, 0.0, 0.0 };
+	gsl_vector_view x = gsl_vector_view_array (pval, p); // pval is the x_init
+
+	const gsl_rng_type * type;
+	gsl_rng * r;
+	gsl_rng_env_setup();
+
+	type = gsl_rng_default;
+	r = gsl_rng_alloc (type);
+
+	f.f = &Mises_gf;
+	f.df = &Mises_gdf;
+	f.fdf = &Mises_gfdf;
+	f.n = n;
+	f.p = p;
+	f.params = &dat;
+
+	T = gsl_multifit_fdfsolver_lmsder;
+	s = gsl_multifit_fdfsolver_alloc (T, n, p);
+	gsl_multifit_fdfsolver_set (s, &f, &x.vector);
+	//print_state (iter, s);
+	do
+	{
+		iter++;
+		status = gsl_multifit_fdfsolver_iterate (s);
+		//printf ("status = %s\n", gsl_strerror (status));
+		//print_state (iter, s);
+		if (status)
+			break;
+		status = gsl_multifit_test_delta (s->dx, s->x,
+				1e-4, 1e-4);
+	}
+	while (status == GSL_CONTINUE && iter < 500);
+	gsl_multifit_covar (s->J, 0.0, covar);
+
+	#define FIT(i) gsl_vector_get(s->x, i)
+	#define ERR(i) sqrt(gsl_matrix_get(covar,i,i))
+
+	double chi = gsl_blas_dnrm2(s->f);
+	double dof = n - p;
+	double c = GSL_MAX_DBL(1, chi / sqrt(dof));
+	//printf("chisq/dof = %g\n", pow(chi, 2.0) / dof);
+	//printf ("A = %.5f +/- %.5f\n", FIT(0), c*ERR(0));
+	//printf ("lambda = %.5f +/- %.5f\n", FIT(1), c*ERR(1));
+	//printf ("b = %.5f +/- %.5f\n", FIT(2), c*ERR(2));
+	//printf ("status = %s\n", gsl_strerror (status));
+
+	// Update components from the fit
+	int k, j;
+  int index = 0;
+  for (k = 0; k < nComp; k++)
+  {
+    for (j = 0; j < nVm[k]; j++)
+    {
+			printf("Fit results: COMP%d %g (%g) %g (%g) %g (%g)\n", k, FIT(2*k)*par[index+3*j], c*ERR(2*k), par[index+3*j+1], par_err[index+3*j+1], FIT(2*k+1)+par[index+3*j+2], c*ERR(2*k+1));
+		}
+		index += nVm[k]*3;
+	}
+
+  ivm=0;
+  icomp=0;
+  for (i=0;i<tmpl->channel[chan].pol[pol].allVm;i++)
+    {
+      if (ivm != tmpl->channel[chan].pol[pol].comp[icomp].nVm-1)
+      {
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].height = par[3*i]*FIT(2*icomp);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].concentration = par[3*i+1];
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].centroid = par[3*i+2]+FIT(2*icomp+1);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].height_err = c*ERR(2*icomp);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].concentration = par_err[3*i+1];
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].centroid = c*ERR(2*icomp+1);
+				ivm++;
+      }
+      else
+      {
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].height = par[3*i]*FIT(2*icomp);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].concentration = par[3*i+1];
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].centroid = par[3*i+2]+FIT(2*icomp+1);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].height_err = c*ERR(2*icomp);
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].concentration = par_err[3*i+1];
+				tmpl->channel[chan].pol[pol].comp[icomp].vonMises[ivm].centroid = c*ERR(2*icomp+1);
 				icomp++;
 				ivm=0;
       }
