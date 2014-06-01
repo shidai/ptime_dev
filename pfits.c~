@@ -157,6 +157,7 @@ void loadPrimaryHeader(fitsfile *fp,dSet *data)
 	  fits_report_error(stderr,status);
 	  exit(1);
 	}
+	printf ("///////////////////////////\n");
       
       /*      fits_read_key(fp,TFLOAT,(char *)"ZERO_OFF",&(data->phead.zeroOff),NULL,&status);
       if (status)
@@ -168,6 +169,7 @@ void loadPrimaryHeader(fitsfile *fp,dSet *data)
 	  printf("Complete reading zero_off\n");
 	  } */
        //printf("COMMENTED OUT READING ZERO_OFF AND NBITS IN PFITS.C -- PUT BACK -- PROBLEM WITH CASPSR FILES\n");
+			 /*
             fits_read_key(fp,TINT,(char *)"NBITS",&(data->phead.nbits),NULL,&status);
       if (status)
 	{
@@ -175,6 +177,7 @@ void loadPrimaryHeader(fitsfile *fp,dSet *data)
 	  fits_report_error(stderr,status);
 	  exit(1);
 	}
+	*/
 
       fits_read_key(fp,TINT,(char *)"NPOL",&(data->phead.npol),NULL,&status);
       if (status)

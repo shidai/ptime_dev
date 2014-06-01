@@ -430,7 +430,7 @@ void saveTemplate(char *fname,tmplStruct *tmpl)
 	    		centre = tmpl->channel[i].pol[j].comp[k].vonMises[h].centroid;
 	    		if (centre > 1) centre-=1;
 	    		if (centre < 0) centre+=1;
-	    		fprintf(fout,"COMP%d: %g %g %g %g %g %g\n",k+1,tmpl->channel[i].pol[j].comp[k].vonMises[h].height,
+	    		fprintf(fout,"COMP%d%d: %g %g %g %g %g %g\n",k+1,h+1,tmpl->channel[i].pol[j].comp[k].vonMises[h].height,
 		    tmpl->channel[i].pol[j].comp[k].vonMises[h].height_err,
 		    tmpl->channel[i].pol[j].comp[k].vonMises[h].concentration,
 		    tmpl->channel[i].pol[j].comp[k].vonMises[h].concentration_err,

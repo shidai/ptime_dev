@@ -119,6 +119,7 @@ int main(int argc,char *argv[])
     }
   fp = openFitsFile(fname);
   loadPrimaryHeader(fp,header);
+	printf ("Open fits file done.\n");
   allocateMemoryTemplateDefault(&tmpl,header->nchan,header->npol,MAX_COMPONENTS,MAX_VONMISES);
   startNewTemplate(&tmpl,header);
   if (setUnits==1) strcpy(tmpl.units,units);
