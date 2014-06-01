@@ -454,6 +454,12 @@ void plot(ptime_observation *obs,pheader *phead,tmplStruct *tmpl)
 			updateTemplateHeader(tmpl,phead);
       printf("Completed load\n");
     }
+    else if (key=='L'){ // align templates
+			int ncomponent;
+			printf("Current channel = %d (from 0 to %d). Please enter component number to align templates: ",chan,nchan-1);
+      scanf("%d",&ncomponent);
+			alignTemplate(tmpl,ncomponent);
+		}
     else if (key=='p'){
       int opol = pol;
       printf("Current polarisation = %d (from 0 to %d). Please enter new channel number: ",pol,npol-1);

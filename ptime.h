@@ -16,7 +16,7 @@ typedef struct vMises {
 } vMises;
 
 typedef struct component {
-  int Comp;            // 1 = I, 2 = Q, 3 = U, 4 = V
+  int Comp;            
   int nVm;             // Number of components for each channel for each Stokes
   vMises *vonMises;
   int vmMemoryAllocated;
@@ -325,6 +325,22 @@ void readTemplate(char *file,tmplStruct *tmpl)
   fclose(fin);
 }
 
+void alignTemplate(tmplStruct *tmpl, int ncomponent)
+{
+	int i, j, k;
+	double shift; 
+	for (i = 1; i < tmpl->nchan; i++)
+	{
+		shift = tmpl->channel[i].pol[0].comp[ncomponent].vonMises[0].centroid - tmpl->channel[0].pol[0].comp[ncomponent].vonMises[0].centroid;
+		for (j = 0; j < tmpl->channel[i].pol[0].nComp; j++)
+		{
+			for (k = 0; k < tmpl->channel[i].pol[0].comp[j].nVm; k++)
+			{
+				tmpl->channel[i].pol[0].comp[j].vonMises[k].centroid -= shift;
+			}
+		}
+	}
+}
 
 // Evaluate a single template component
 double evaluateTemplateComponent(tmplStruct *tmpl,double phi,int chan,int stokes,int comp,double phiRot)
